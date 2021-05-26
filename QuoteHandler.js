@@ -1,8 +1,6 @@
-verbose = false;  //can be overwritten by property file. decides whether bot should respond to invalid commands (permissions, bad syntax, etc)
-
 var WRITE_TOKEN;
 var READ_TOKEN;
-const DISCORD_MOD_ID = '827353554678448128';
+var DISCORD_MOD_ID;
 
 const https = require('https');
 var commands;
@@ -11,21 +9,20 @@ module.exports = {
 	init: function(props){
 		WRITE_TOKEN = props.get('quote.token.write');
 		READ_TOKEN = props.get('quote.token.read');
+		DISCORD_MOD_ID = props.get('discord.mod');
 				
 		commands = [
 			{command: "!quote", requiresMod: false, apiMethod: "quote", token: READ_TOKEN},
-			{command: "!addquote", requiresMod: true, apiMethod: "addquote", token: WRITE_TOKEN},
-			{command: "!delquote", requiresMod: true, apiMethod: "delquote", token: WRITE_TOKEN}
+			//{command: "!addquote", requiresMod: true, apiMethod: "addquote", token: WRITE_TOKEN},
+			//{command: "!delquote", requiresMod: true, apiMethod: "delquote", token: WRITE_TOKEN}
 		]
 		
-		//read property file to know whether to set verbose to false or true
 		console.log("quote handler ready!");
 	},
 	
 	handle: function(client, msg){
 		let command = canHandle(msg);
 		if (command){
-			//add callback function
 			apiCall(command.apiMethod, command.token, getParamsFromMessage(msg.content), out => msg.reply(out));
 			return true;
 		}
@@ -87,18 +84,3 @@ function apiCall(method, token, params, callback){
 
 	req.end();
 }
-
-/*
-!quote
-This will return a random quote
-
-!quote 4
-This will return the 4th quote in the list
-You can use negative numbers (-1 would be the last quote)
-
-!quote cookie
-This will return a random quote containing the word “cookie”
-
-There’s also a special command:
-!quote list
-*/

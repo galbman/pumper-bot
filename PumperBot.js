@@ -1,16 +1,14 @@
-
-const CONFIG_PATH = './resources/config.txt';
-
-
-const Discord = require("discord.js");
-const fs = require('fs');  //maybe remove?
+const discord = require("discord.js");
 const pr = require('properties-reader');
-const PROPERTIES = pr(CONFIG_PATH);
 const quoteHandler = require("./QuoteHandler.js");
 const playlistHandler = require("./PlaylistHandler.js");
 
-const client = new Discord.Client();
-const short_prefix = '!';
+const CONFIG_PATH = './resources/config.txt';
+const PROPERTIES = pr(CONFIG_PATH);
+const SHORT_PREFIX = '!';
+
+const client = new discord.Client();
+
 
 var token = PROPERTIES.get('discord.token');
 client.login(token);
@@ -23,7 +21,7 @@ client.on('ready', () => {
 })
 
 client.on('message', async (msg) => {
-	if (!msg.content.startsWith(short_prefix) || msg.author.bot || !msg.guild){
+	if (!msg.content.startsWith(SHORT_PREFIX) || msg.author.bot || !msg.guild){
 		return;	
 	} else {
 		for (const handler of handlers){
@@ -36,7 +34,3 @@ client.on('message', async (msg) => {
 });
 
 const handlers = [quoteHandler, playlistHandler];
-
-
-//todo 
-//move discord mod id to properties file

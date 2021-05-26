@@ -1,33 +1,36 @@
 const fs = require('fs');
 const https = require('https');
 
-
-const STREAMER_ID = 'thepumperpair';
-//const STREAMER_ID = 'galbman';
 const ROOT_COMMAND = '!playlist';
 const TITLE_DELIMITER = '-';
 const PLAYLIST_FILE = './resources/playlist.json'
+var DISCORD_MOD_ID;
+var CHANNEL_ID;
+var STREAMER_ID;
 
 var commands;
 
 
 /*TODO
-new repo, get prop file and playlist file out of there :(
 exception handling
 help
 prevent duplicates?
 get past playlists using MMYYYY parm
+cache song list? though probably not needed
 */
 
 module.exports = {
 	init: function(props){
+		DISCORD_MOD_ID = props.get('discord.mod');
+		CHANNEL_ID = props.get('playlist.channel');
+		STREAMER_ID = props.get('playlist.streamer');
+
 		commands = [
 			{command: "request", requiresMod: false, handler: request},
 			{command: "check", requiresMod: false, handler: check},
-			{command: "dump", requiresMod: true, handler: dump}
+			{command: "dump", requiresMod: false, handler: dump}
 		]
 		
-		//read property file to know whether to set verbose to false or true
 		console.log("playlist handler ready!");
 	},
 	
@@ -43,7 +46,7 @@ module.exports = {
 
 function canHandle(msg){
 	for (const command of commands){
-		if (msg.content.toLowerCase().startsWith(ROOT_COMMAND + " " + command.command)){
+		if (msg.channel.id == CHANNEL_ID && msg.content.toLowerCase().startsWith(ROOT_COMMAND + " " + command.command)){
 			if (command.requiresMod && !msg.member.roles.cache.has(DISCORD_MOD_ID))	{
 				console.log(msg.member.roles.cache);
 				msg.reply("not allowed");
