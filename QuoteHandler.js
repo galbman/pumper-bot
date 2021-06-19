@@ -9,7 +9,7 @@ module.exports = {
 	init: function(props){
 		WRITE_TOKEN = props.get('quote.token.write');
 		READ_TOKEN = props.get('quote.token.read');
-		DISCORD_MOD_ID = props.get('discord.mod');
+		DISCORD_MOD_ID = props.getRaw('discord.mod');
 				
 		commands = [
 			{command: "!quote", requiresMod: false, apiMethod: "quote", token: READ_TOKEN},

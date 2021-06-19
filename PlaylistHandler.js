@@ -2,33 +2,37 @@ const fs = require('fs');
 const https = require('https');
 
 const ROOT_COMMAND = '!playlist';
-const TITLE_DELIMITER = '-';
+const TITLE_DELIMITER = ' by ';
+const FOR_DELIMITER = ' for ';
 const PLAYLIST_FILE = './resources/playlist.json'
 var DISCORD_MOD_ID;
 var CHANNEL_ID;
 var STREAMER_ID;
+var SONGLIST_AUTH;
 
 var commands;
 
-
 /*TODO
+concurrent access > check for lock file, then create, then read, then write, then remove lock
 exception handling
-help
-prevent duplicates?
 get past playlists using MMYYYY parm
 cache song list? though probably not needed
 */
 
 module.exports = {
 	init: function(props){
-		DISCORD_MOD_ID = props.get('discord.mod');
+		DISCORD_MOD_ID = props.getRaw('discord.mod');
 		CHANNEL_ID = props.get('playlist.channel');
 		STREAMER_ID = props.get('playlist.streamer');
+		SONGLIST_AUTH = props.get('playlist.auth');
 
 		commands = [
 			{command: "request", requiresMod: false, handler: request},
 			{command: "check", requiresMod: false, handler: check},
-			{command: "dump", requiresMod: false, handler: dump}
+			{command: "dump", requiresMod: false, handler: dump},
+			{command: "upload", requiresMod: true, handler: upload},
+			{command: "clear", requiresMod: false, handler: clear},
+			{command: "help", requiresMod: false, handler: help}
 		]
 		
 		console.log("playlist handler ready!");
@@ -49,7 +53,7 @@ function canHandle(msg){
 		if (msg.channel.id == CHANNEL_ID && msg.content.toLowerCase().startsWith(ROOT_COMMAND + " " + command.command)){
 			if (command.requiresMod && !msg.member.roles.cache.has(DISCORD_MOD_ID))	{
 				console.log(msg.member.roles.cache);
-				msg.reply("not allowed");
+				msg.reply("not allowed, " + msg.author.username + "does not have role " + DISCORD_MOD_ID);	
 			} else {
 				return command;
 			}
@@ -60,31 +64,28 @@ function canHandle(msg){
 
 /***********************************************
 
-High level handler functions
+Initial handler functions
 
 ***********************************************/
 
-function request(client, msg){
-	getFromSongApi("export", function(resp) {
-		requestFull(client, msg, resp.items);
-	});
+function upload(client, msg){
+	let data = readPlaylist();
+	let monthStr = getCurrentMonthString();
+	
+	if (!data[monthStr] || data[monthStr].length == 0){
+		msg.reply("No requests yet for " + decodeDateString(monthStr));
+	} else {
+		let songs = Object.values(data[monthStr]);
+		if (songs.length > 0){
+			uploadSongRecursive(songs, msg);
+		}		
+	}
 }
 
-function requestFull(client, msg, songList){
-	console.log("msg: " + msg);
-	console.log("msg.content: " + msg.content);
-	let params = getParamsFromMessage(msg.content);
-	let songId = locateSongOnList(params, songList);
-	console.log("matched song: " + songId);
-	if (songId){
-		let match = songList.find(song => song.id === songId);
-		let data = readPlaylist();
-		updatePlaylist(data, msg.author.id, msg.author.username, songId, match.title, match.artist, getCurrentMonthString());
-		writePlaylist(data);
-	msg.reply("Your song choice has been updated to \"" + match.title + "\" by " + match.artist);
-	} else {
-		msg.reply("Song not found. Try copying the exact name from the songlist: https://www.streamersonglist.com/t/" + STREAMER_ID + "/songs");
-	}	
+function request(client, msg){
+	getFromSongApi("export", function(resp) {
+		requestWithSonglist(client, msg, resp.items);
+	});
 }
 
 function check(client, msg){
@@ -115,12 +116,133 @@ function dump(client, msg){
 	}
 };
 
+function clear(client, msg){
+	const guild = client.guilds.cache.get('826954845101359124');
+	
+	let requestBody = getParamsFromMessage(msg.content, 2);
+	if (requestBody.startsWith("for ")){
+		let requestFor = requestBody.substr(3).trim();
+		guild.members.fetch().then(queryResults => {
+			queryResults.forEach(user => {
+				if (user.user.username.toLowerCase() === requestFor.trim().toLowerCase() && msg.member.roles.cache.has(DISCORD_MOD_ID)){
+					clearFull(client, msg, user.user.id, user.user.username);	
+				}
+			})
+		}).catch(console.error);
+	} else {
+		clearFull(client, msg, msg.author.id);
+	}
+}
+
+function help(client, msg){
+	let resp = "\n!playlist request [_TITLE_] {by _ARTIST_} {for _USERNAME_}\n";
+	resp += "!playlist check\n";
+	resp += "!playlist clear {for _USERNAME_}\n";
+	resp += "!playlist dump {_MMYYYY_}\n";
+	resp += "!playlist upload {_MMYYYY_}\n";
+	msg.reply(resp);
+}
+
 
 /***********************************************
 
-	File interaction functions
+Handler helper/recursive/asynch callback functions
 
 ***********************************************/
+
+function clearFull(client, msg, userId, username){
+	let data = readPlaylist();
+	clearFromPlaylist(data, userId, getCurrentMonthString());
+	writePlaylist(data);
+	let resp = (username ? "Song choice for " + username : "Your song choice");
+	msg.reply(resp + " was reset");
+}
+
+function requestWithSonglist(client, msg, songList){
+	const guild = client.guilds.cache.get('826954845101359124');
+	
+	let requestBody = getParamsFromMessage(msg.content, 2);
+	console.log("request body: " + requestBody);
+	let requestForParts = requestBody.toLowerCase().split(FOR_DELIMITER);
+	let found = false;
+	if (requestForParts.length > 1 && msg.member.roles.cache.has(DISCORD_MOD_ID)){
+		let requestFor = requestForParts[requestForParts.length-1].trim();
+		console.log("checking for request for: " + requestFor);
+		guild.members.fetch().then(queryResults => {
+			queryResults.forEach(user => {
+				if (user.user.username.toLowerCase() === requestFor.trim().toLowerCase() && msg.member.roles.cache.has(DISCORD_MOD_ID)){
+					console.log("song string: "+ requestForParts.slice(0, requestForParts.length-1));
+					found = true;
+					requestFull(client, msg, requestForParts.slice(0, requestForParts.length-1).join(FOR_DELIMITER), user.user.id, user.user.username, songList);
+				}
+			})
+			if (!found){
+				requestFull(client, msg, requestBody, msg.author.id, msg.author.username, songList);
+			}
+		}).catch(console.error);			
+	} else {
+		requestFull(client, msg, requestBody, msg.author.id, msg.author.username, songList);
+	}
+}
+
+function requestFull(client, msg, requestString, requestForID, requestForName, songList){
+	console.log("request full requestString: " + requestString + " requestForId: " + requestForID + " requestForName: " + requestForName);
+	let songId = locateSongOnList(requestString, songList);
+	console.log("matched song: " + songId);
+	if (songId){
+		let match = songList.find(song => song.id === songId);
+		let playlist = readPlaylist();
+		//if playlist contains this song already, return error, else add
+		let alreadyRequested = whoRequested(songId, playlist);
+		if (alreadyRequested){
+			msg.reply(alreadyRequested + " has already requested \"" + match.title + "\" by " + match.artist);
+		} else {
+			updatePlaylist(playlist, requestForID, requestForName, songId, match.title, match.artist, getCurrentMonthString());
+			writePlaylist(playlist);
+			let resp = (requestForName ? "Song choice for " + requestForName : "Your song choice");
+			msg.reply(resp + " has been updated to \"" + match.title + "\" by " + match.artist);			
+		}
+	} else {
+		msg.reply("Song not found. Try copying the exact name from the songlist: https://www.streamersonglist.com/t/" + STREAMER_ID + "/songs");
+	}
+}
+
+function uploadSongRecursive(songs, msg){
+	if (songs.length == 0){
+		msg.reply("All songs added to queue");
+	} else {
+		console.log(songs);
+		addSongToQueue(songs[0], songs.slice(1), msg, uploadSongRecursive);
+	}
+}
+
+/***********************************************
+
+	Playlist functions
+
+***********************************************/
+
+function whoRequested(songId, playlist){
+	console.log("who requested: " + songId);
+	let date = getCurrentMonthString();
+	if (playlist[date] && Object.keys(playlist[date]).length > 0){
+		for (const userId of Object.keys(playlist[date])) {
+			console.log(playlist[date][userId]);
+			if (playlist[date][userId].songId === songId){
+				return playlist[date][userId].username;
+			}	  
+		}
+	}
+}
+
+function clearFromPlaylist(playlist, userId, date){
+	if (playlist[date] && playlist[date][userId]){
+		delete playlist[date][userId];
+		if (Object.keys(playlist[date]).length == 0){
+			delete playlist[date];
+		}
+	}
+}
 
 function updatePlaylist(playlist, userId, username, songId, title, artist, date){
 	if (!playlist[date]){
@@ -161,6 +283,7 @@ function writePlaylist(data){
  if none, return null
  **/
 function locateSongOnList(songParam, songList){
+	console.log("calling locateSongOnList with songParam: " + songParam);
 	let parts = songParam.toLowerCase().trim().split(TITLE_DELIMITER);
 	let title = "";
 	let artist = "";
@@ -177,9 +300,6 @@ function locateSongOnList(songParam, songList){
 	let exactTitleId, exactTitleArtistId, partialTitleId, partialTitleArtistId;
 	
 	for (const song of songList){
-		//console.log("songlist title: [" + song.title.trim().toLowerCase() + "]");
-		//console.log("songlist artist: [" + song.artist.trim().toLowerCase() + "]");
-
 		if (artist && !exactTitleArtistId && song.title.trim().toLowerCase() === title && song.artist.trim().toLowerCase() === artist){
 			exactTitleArtistId = song.id;
 		} else if (!exactTitleId && song.title.trim().toLowerCase() === songParam.trim().toLowerCase()){  //treat entire input as title
@@ -210,7 +330,6 @@ function getFromSongApi(path, callback){
 	}
 
 	const req = https.request(options, res => {
-		console.log(`statusCode: ${res.statusCode}`);
 		let resBody = '';
 
 		res.on('data', chunk => {
@@ -218,7 +337,6 @@ function getFromSongApi(path, callback){
 		})
 
 		res.on('end', d => {
-			console.log("response: " + resBody);
 			callback(JSON.parse(resBody));
 		})
 	})
@@ -230,6 +348,55 @@ function getFromSongApi(path, callback){
 	req.end();
 }
 
+function addSongToQueue(request, remainingSongs, msg, callback){
+	let pathStr = '/v1/streamers/' + STREAMER_ID + '/queue/';
+	console.log(pathStr);
+	
+	const data = JSON.stringify({
+		"songId": request.songId,
+		"requests": [{"amount": 0, "name": request.username}],
+		"note": ""
+	});
+
+	let auth_header = 'Bearer ' + SONGLIST_AUTH;
+	
+	const options = {
+		hostname: 'api.streamersonglist.com',
+		port: 443,
+		path: pathStr,
+		method: 'POST',
+		headers: {'Authorization': auth_header, 'origin': 'plantbot3000', 
+			'accept': 'application/json',
+			'Content-Type': 'application/json',
+			'Content-Length': data.length}
+	}	
+
+	const req = https.request(options, res => {
+		console.log(`statusCode: ${res.statusCode}`);
+		let resBody = '';
+
+		res.on('data', chunk => {
+			resBody += chunk;
+		})
+
+		res.on('end', d => {
+			if (res.statusCode != 201){
+				msg.reply("Upload failed at " + request.username);
+			} else {
+				callback(remainingSongs, msg);
+			}		
+		})
+	})
+
+	req.on('error', error => {
+	  console.error(error);
+	  msg.reply("Upload failed at " + request.username);
+	})
+
+	req.write(data);
+	req.end();
+}
+
 
 /***********************************************
 
@@ -237,8 +404,12 @@ function getFromSongApi(path, callback){
 
 ***********************************************/
 
-function getParamsFromMessage(message){
-	return message.split(" ").slice(2).join(" ").trim();
+function getRequesteeFromMessage(message){
+	return message.split(" ")[1];
+}
+
+function getParamsFromMessage(message, partsCount){
+	return message.split(" ").slice(partsCount).join(" ").trim();
 }
 
 function getCurrentMonthString(){
