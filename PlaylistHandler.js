@@ -9,6 +9,7 @@ var DISCORD_MOD_ID;
 var CHANNEL_ID;
 var STREAMER_ID;
 var SONGLIST_AUTH;
+var GUILD_ID;
 
 var commands;
 
@@ -25,6 +26,7 @@ module.exports = {
 		CHANNEL_ID = props.get('playlist.channel');
 		STREAMER_ID = props.get('playlist.streamer');
 		SONGLIST_AUTH = props.get('playlist.auth');
+		GUILD_ID = props.getRaw('discord.guildID');
 
 		commands = [
 			{command: "request", requiresMod: false, handler: request},
@@ -117,7 +119,7 @@ function dump(client, msg){
 };
 
 function clear(client, msg){
-	const guild = client.guilds.cache.get('826954845101359124');
+	const guild = client.guilds.cache.get(GUILD_ID);
 	
 	let requestBody = getParamsFromMessage(msg.content, 2);
 	if (requestBody.startsWith("for ")){
@@ -159,7 +161,7 @@ function clearFull(client, msg, userId, username){
 }
 
 function requestWithSonglist(client, msg, songList){
-	const guild = client.guilds.cache.get('826954845101359124');
+	const guild = client.guilds.cache.get(GUILD_ID);
 	
 	let requestBody = getParamsFromMessage(msg.content, 2);
 	console.log("request body: " + requestBody);
@@ -379,7 +381,7 @@ function addSongToQueue(request, remainingSongs, msg, callback){
 			resBody += chunk;
 		})
 
-		res.on('end', d => {
+		res.on('end', d => {	
 			if (res.statusCode != 201){
 				msg.reply("Upload failed at " + request.username);
 			} else {
