@@ -126,7 +126,9 @@ function clear(client, msg){
 		let requestFor = requestBody.substr(3).trim();
 		guild.members.fetch().then(queryResults => {
 			queryResults.forEach(user => {
-				if (user.user.username.toLowerCase() === requestFor.trim().toLowerCase() && msg.member.roles.cache.has(DISCORD_MOD_ID)){
+				if ((user.user.username.toLowerCase() === requestFor.trim().toLowerCase()
+					|| user.displayName.toLowerCase() === requestFor.trim().toLowerCase())
+					 && msg.member.roles.cache.has(DISCORD_MOD_ID)){
 					clearFull(client, msg, user.user.id, user.user.username);	
 				}
 			})
@@ -172,7 +174,8 @@ function requestWithSonglist(client, msg, songList){
 		console.log("checking for request for: " + requestFor);
 		guild.members.fetch().then(queryResults => {
 			queryResults.forEach(user => {
-				if (user.user.username.toLowerCase() === requestFor.trim().toLowerCase() && msg.member.roles.cache.has(DISCORD_MOD_ID)){
+				if ((user.user.username.toLowerCase() === requestFor.trim().toLowerCase() || user.displayName.toLowerCase() === requestFor.trim().toLowerCase())
+				&& msg.member.roles.cache.has(DISCORD_MOD_ID)){
 					console.log("song string: "+ requestForParts.slice(0, requestForParts.length-1));
 					found = true;
 					requestFull(client, msg, requestForParts.slice(0, requestForParts.length-1).join(FOR_DELIMITER), user.user.id, user.user.username, songList);
