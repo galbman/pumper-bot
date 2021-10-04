@@ -46,7 +46,7 @@ module.exports = {
 	},
 	
 	handle: function(client, msg){
-		let command = canHandle(msg);
+		let command = canHandle(client, msg);
 		if (command){
 			command.handler(client, msg);
 			return true;
@@ -55,11 +55,15 @@ module.exports = {
 	}
 }
 
-function canHandle(msg){
+function canHandle(client, msg){
+	console.log("GUILD_ID: " + GUILD_ID);
+	console.log("MEMBERS: " + JSON.stringify(client.guilds.cache.get(GUILD_ID).members));
+	console.log("AUTHOR ID: " + msg.author.id);
+	console.log("AUTHOR: " + JSON.stringify(client.guilds.cache.get(GUILD_ID).members.cache.get(msg.author.id)));
 	for (const command of commands){
 		if ((msg.channel.id == CHANNEL_ID || !msg.guild) && msg.content.toLowerCase().startsWith(ROOT_COMMAND + " " + command.command)){
-			if (command.requiresMod && !msg.member.roles.cache.has(DISCORD_MOD_ID))	{
-				console.log(msg.member.roles.cache);
+			if (command.requiresMod && !client.guilds.cache.get(GUILD_ID).members.cache.get(msg.author.id).roles.cache.has(DISCORD_MOD_ID))	{
+				//if not allowing dm, can just use !msg.member.roles.cache
 				msg.reply("not allowed, " + msg.author.username + "does not have role " + DISCORD_MOD_ID);	
 			} else {
 				return command;
