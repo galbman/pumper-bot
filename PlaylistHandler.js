@@ -80,7 +80,7 @@ function modCheck(msg){
 	if (!msg.guild){
 		return (msg.author.id === JON_ID || msg.author.id === HACKMAN_ID);
 	} else {
-		return !msg.member.roles.cache.has(DISCORD_MOD_ID);
+		return msg.member.roles.cache.has(DISCORD_MOD_ID);
 	}
 }
 
