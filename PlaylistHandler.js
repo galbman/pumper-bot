@@ -65,7 +65,7 @@ function canHandle(client, msg){
 	console.log("AUTHOR ID: " + msg.author.id);
 	console.log("AUTHOR: " + JSON.stringify(client.guilds.cache.get(GUILD_ID).members.cache.get(msg.author.id)));
 	for (const command of commands){
-		if ((msg.channel.id == CHANNEL_ID || !msg.guild) && msg.content.toLowerCase().startsWith(ROOT_COMMAND + " " + command.command)){
+		if ((msg.channel.id == CHANNEL_ID || !msg.guild || msg.author.id === HACKMAN_ID) && msg.content.toLowerCase().startsWith(ROOT_COMMAND + " " + command.command)){
 			if (command.requiresMod && !modCheck(msg))	{
 				msg.reply("not allowed, " + msg.author.username + " does not have mod role");	
 			} else {
