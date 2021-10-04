@@ -15,6 +15,8 @@ var CHANNEL_ID;
 var STREAMER_ID;
 var SONGLIST_AUTH;
 var GUILD_ID;
+var JON_ID;
+var HACKMAN_ID;
 
 var commands;
 
@@ -32,6 +34,8 @@ module.exports = {
 		STREAMER_ID = props.get('playlist.streamer');
 		SONGLIST_AUTH = props.get('playlist.auth');
 		GUILD_ID = props.getRaw('discord.guildID');
+		JON_ID = props.getRaw('discord.jonID');
+		HACKMAN_ID = props.getRaw('discord.hackmanID');
 
 		commands = [
 			{command: "request", requiresMod: false, handler: request},
@@ -62,15 +66,22 @@ function canHandle(client, msg){
 	console.log("AUTHOR: " + JSON.stringify(client.guilds.cache.get(GUILD_ID).members.cache.get(msg.author.id)));
 	for (const command of commands){
 		if ((msg.channel.id == CHANNEL_ID || !msg.guild) && msg.content.toLowerCase().startsWith(ROOT_COMMAND + " " + command.command)){
-			if (command.requiresMod && !client.guilds.cache.get(GUILD_ID).members.cache.get(msg.author.id).roles.cache.has(DISCORD_MOD_ID))	{
-				//if not allowing dm, can just use !msg.member.roles.cache
-				msg.reply("not allowed, " + msg.author.username + "does not have role " + DISCORD_MOD_ID);	
+			if (command.requiresMod && !modCheck(msg))	{
+				msg.reply("not allowed, " + msg.author.username + " does not have mod role");	
 			} else {
 				return command;
 			}
 		}
 	}
 	return false;
+}
+
+function modCheck(msg){
+	if (!msg.guild){
+		return (msg.author.id === JON_ID || msg.author.id === HACKMAN_ID);
+	} else {
+		return !msg.member.roles.cache.has(DISCORD_MOD_ID);
+	}
 }
 
 /***********************************************
