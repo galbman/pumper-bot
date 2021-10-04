@@ -1,5 +1,10 @@
 const fs = require('fs');
 const https = require('https');
+const pr = require('properties-reader');
+
+
+const TWITCH_HANDLES_PATH = './resources/twitch_handles.txt';
+const TWITCH_HANDLES = pr(TWITCH_HANDLES_PATH);
 
 const ROOT_COMMAND = '!playlist';
 const TITLE_DELIMITER = ' by ';
@@ -52,7 +57,7 @@ module.exports = {
 
 function canHandle(msg){
 	for (const command of commands){
-		if (msg.channel.id == CHANNEL_ID && msg.content.toLowerCase().startsWith(ROOT_COMMAND + " " + command.command)){
+		if ((msg.channel.id == CHANNEL_ID || !msg.guild) && msg.content.toLowerCase().startsWith(ROOT_COMMAND + " " + command.command)){
 			if (command.requiresMod && !msg.member.roles.cache.has(DISCORD_MOD_ID))	{
 				console.log(msg.member.roles.cache);
 				msg.reply("not allowed, " + msg.author.username + "does not have role " + DISCORD_MOD_ID);	
@@ -194,7 +199,7 @@ function requestFull(client, msg, requestString, requestForID, requestForName, s
 	console.log("request full requestString: " + requestString + " requestForId: " + requestForID + " requestForName: " + requestForName);
 	let songId = locateSongOnList(requestString, songList);
 	console.log("matched song: " + songId);
-	if (songId){
+	if (songId){	
 		let match = songList.find(song => song.id === songId);
 		let playlist = readPlaylist();
 		//if playlist contains this song already, return error, else add
@@ -260,6 +265,7 @@ function updatePlaylist(playlist, userId, username, songId, title, artist, date)
 	playlist[date][userId]["username"] = username;
 	playlist[date][userId]["title"] = title;
 	playlist[date][userId]["artist"] = artist;
+	playlist[date][userId]["twitch_username"] = TWITCH_HANDLES.get(userId);	
 }
 
 function readPlaylist(){
@@ -357,9 +363,12 @@ function addSongToQueue(request, remainingSongs, msg, callback){
 	let pathStr = '/v1/streamers/' + STREAMER_ID + '/queue/';
 	console.log(pathStr);
 	
+	//replace request username with twitch name, if it is in the map
+	let name = (request.twitch_username ? request.twitch_username : request.username);
+	
 	const data = JSON.stringify({
 		"songId": request.songId,
-		"requests": [{"amount": 0, "name": request.username}],
+		"requests": [{"amount": 0, "name": name}],
 		"note": ""
 	});
 

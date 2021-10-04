@@ -21,7 +21,7 @@ client.on('ready', () => {
 })
 
 client.on('message', async (msg) => {
-	if (!msg.content.startsWith(SHORT_PREFIX) || msg.author.bot || !msg.guild){
+	if (!msg.content.startsWith(SHORT_PREFIX) || msg.author.bot){
 		return;	
 	} else {
 		for (const handler of handlers){
