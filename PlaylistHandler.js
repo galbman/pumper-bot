@@ -60,10 +60,10 @@ module.exports = {
 }
 
 function canHandle(client, msg){
-	console.log("GUILD_ID: " + GUILD_ID);
-	console.log("MEMBERS: " + JSON.stringify(client.guilds.cache.get(GUILD_ID).members));
-	console.log("AUTHOR ID: " + msg.author.id);
-	console.log("AUTHOR: " + JSON.stringify(client.guilds.cache.get(GUILD_ID).members.cache.get(msg.author.id)));
+	//console.log("GUILD_ID: " + GUILD_ID);
+	//console.log("MEMBERS: " + JSON.stringify(client.guilds.cache.get(GUILD_ID).members));
+	//console.log("AUTHOR ID: " + msg.author.id);
+	//console.log("AUTHOR: " + JSON.stringify(client.guilds.cache.get(GUILD_ID).members.cache.get(msg.author.id)));
 	for (const command of commands){
 		if ((msg.channel.id == CHANNEL_ID || !msg.guild || msg.author.id === HACKMAN_ID) && msg.content.toLowerCase().startsWith(ROOT_COMMAND + " " + command.command)){
 			if (command.requiresMod && !modCheck(msg))	{

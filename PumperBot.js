@@ -2,6 +2,8 @@ const discord = require("discord.js");
 const pr = require('properties-reader');
 const quoteHandler = require("./QuoteHandler.js");
 const playlistHandler = require("./PlaylistHandler.js");
+const dadjokeHandler = require("./DadJokeHandler.js");
+
 
 const CONFIG_PATH = './resources/config.txt';
 const PROPERTIES = pr(CONFIG_PATH);
@@ -33,4 +35,4 @@ client.on('message', async (msg) => {
 	}
 });
 
-const handlers = [quoteHandler, playlistHandler];
+const handlers = [quoteHandler, playlistHandler, dadjokeHandler];

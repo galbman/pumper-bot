@@ -34,7 +34,7 @@ function canHandle(msg){
 	for (const command of commands){
 		if (msg.content.toLowerCase().startsWith(command.command)){
 			if (command.requiresMod && !msg.member.roles.cache.has(DISCORD_MOD_ID))	{
-				console.log(msg.member.roles.cache);
+				//console.log(msg.member.roles.cache);
 				msg.reply("not allowed");
 			} else {
 				return command;
