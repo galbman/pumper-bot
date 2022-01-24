@@ -6,6 +6,12 @@ const DAD_PART = 0;
 const JOKE_PART = 1;
 const WOTD_PART = 2;
 const DATE_PART = 3;
+
+const FIRST_DATE = '012022';
+
+var JON_ID;
+var HACKMAN_ID;
+const TABLEKNIGHT_ID = 398575367377518602;
 //TODO make help message use these
 
 
@@ -24,8 +30,9 @@ module.exports = {
 				
 		docClient = new AWS.DynamoDB.DocumentClient();
 				
-				
 		DISCORD_MOD_ID = props.getRaw('discord.mod');
+		JON_ID = props.getRaw('discord.jonID');
+		HACKMAN_ID = props.getRaw('discord.hackmanID');
 
 		commands = [
 			{command: "add", requiresMod: true, handler: addJoke},
@@ -86,10 +93,9 @@ function addJoke(client, msg) {
 		docClient.put(params, function(err, data) {
 			if (err) {
 				console.log(JSON.stringify(err, undefined, 2));
-				msg.reply("err");
 			} else {
 				console.log(JSON.stringify(data, undefined, 2));
-				msg.reply("success");
+				msg.reply("Your dad joke will make a fine addition to my collection!");
 			}
 		});
 	}
@@ -161,50 +167,76 @@ function getJokes(client, msg){
 		if (err) {
 			console.error("Unable to query. Error:", JSON.stringify(err, null, 2));
 		} else {
-			console.log("Query succeeded.");
-			let retString = "Jokes for " + dateParm + ":\n";
+			//console.log("Query succeeded.");
+			
+			if (data.Items.length > 0){
+			let retString = "Jokes for " + dateParm + ":\n";			
 			data.Items.forEach(function(item) {
 				retString += item.Dad + ": \"" + item.Joke + "\"\nWOTD: " + item.Word + "\n\n";
 			});
+			msg.reply(retString);
+			} else {
+				msg.reply("No dad jokes found for " + dateParm + ". Perhaps the archives are incomplete.");
+			}
+		}
+	});
+}
+
+//pick random date between now and the date of the first jokes. get all for that date.  get random from results.
+function randomJoke(client, msg){
+
+	let dateParm = getRandomDateParm();
+
+	var params = {
+		TableName : "DadJokes",
+		KeyConditionExpression: "#date = :date",
+		ExpressionAttributeNames:{
+			"#date": "MMYYYY"
+		},
+		ExpressionAttributeValues: {
+			":date" : dateParm
+		}
+	};
+	
+	docClient.query(params, function(err, data) {
+		if (err) {
+			console.error("Unable to query. Error:", JSON.stringify(err, null, 2));
+		} else {		
+			let item = data.Items[(Math.floor(Math.random() * data.Items.length))];
+			
+			let retString = "\n";
+			retString += "\"" + item.Joke + "\"";
+			//retString += "\nDad: " + item.Dad + "\tWOTD: " + item.Word + "\tDate: " + item.MMYYYY + "\n\n";
 			msg.reply(retString);
 		}
 	});
 }
 
-function randomJoke(client, msg){	
-	//pick random date. get all for that date.  get random from results.
-
-	var params = {
-		TableName: "DadJokes",
-		Limit: 1,
-		HashKeyValue: "Id",
-		ExclusiveStartKey: {Id: searchKey, Word: "a"},
-	};
+//pretend i'm using a proper date library and this is a single line of code
+function getRandomDateParm(){
+	let dt = new Date();
 	
-	//query(params, msg);
+	let numMonthsFirst = (FIRST_DATE.substr(2) * 12) + (parseInt(FIRST_DATE.substr(0,2)));
+	//console.log("numMonthsFirst: " + numMonthsFirst);
+	let numMontsCurrent = (dt.getFullYear() * 12) + (dt.getMonth() + 1);
+	//console.log("numMontsCurrent: " + numMontsCurrent);
+	let monthDif = numMontsCurrent - numMonthsFirst;
+	//console.log("monthDif: " + monthDif);
+	let randOffset = Math.floor(Math.random() * (monthDif + 1));
+	//console.log("randOffset: " + randOffset);
+	let numMonthsRand = randOffset + numMonthsFirst;
+	//console.log("numMonthsRand: " + numMonthsRand);
+	let multTwelve = (numMonthsRand % 12) == 0;
+	
+	let strDateRand = "";
+	if (multTwelve){
+		strDateRand = "12" + String(Math.floor(numMonthsRand/12)-1);	
+	} else {
+		strDateRand = String(numMonthsRand % 12).padStart(2, "0") + String(Math.floor(numMonthsRand/12));	
+	}
+	//console.log("strDateRand: " + strDateRand);
+	return strDateRand;		
 }
-/*
-function scan(params, msg){
-	docClient.scan(params, function(err, data){
-		if (err) {
-            console.log(JSON.stringify(err, undefined, 2));
-			msg.reply("err");
-        } else {			
-            console.log(JSON.stringify(data, undefined, 2));
-			if (data.Count == 0){
-				console.log("no hits");
-				if (params.ExclusiveStartKey.Id != NIL_UUID){
-					console.log("trying again with null uuid");
-					params.ExclusiveStartKey.Id = NIL_UUID;
-					scan(params, msg);
-				}
-			} else {
-				msg.reply(params.ExclusiveStartKey.Id + "  " + data.Items[0].Id);
-			}			
-        }
-	});	
-}*/
-
 
 function help(client, msg){
 	let resp = "\n"
@@ -218,7 +250,7 @@ function modCheck(msg){
 	if (!msg.guild){
 		return (msg.author.id === JON_ID || msg.author.id === HACKMAN_ID);
 	} else {
-		return msg.member.roles.cache.has(DISCORD_MOD_ID);
+		return (msg.member.roles.cache.has(DISCORD_MOD_ID) || msg.author.id === TABLEKNIGHT_ID);
 	}
 }
 
