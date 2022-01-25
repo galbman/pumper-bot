@@ -11,8 +11,7 @@ const FIRST_DATE = '012022';
 
 var JON_ID;
 var HACKMAN_ID;
-const TABLEKNIGHT_ID = 398575367377518602;
-//TODO make help message use these
+var TABLEKNIGHT_ID;
 
 
 var docClient;
@@ -33,6 +32,7 @@ module.exports = {
 		DISCORD_MOD_ID = props.getRaw('discord.mod');
 		JON_ID = props.getRaw('discord.jonID');
 		HACKMAN_ID = props.getRaw('discord.hackmanID');
+		TABLEKNIGHT_ID = props.getRaw('discord.tableknightID');
 
 		commands = [
 			{command: "add", requiresMod: true, handler: addJoke},
@@ -247,6 +247,8 @@ function help(client, msg){
 }
 
 function modCheck(msg){
+	console.log("mod check for msg with guild [" + msg.guild + "] and author: [" + msg.author.id + "]");
+	console.log("TABLEKNIGHT_ID: " + TABLEKNIGHT_ID + " msgId: " + msg.author.id + " equal? " + (msg.author.id === TABLEKNIGHT_ID));
 	if (!msg.guild){
 		return (msg.author.id === JON_ID || msg.author.id === HACKMAN_ID);
 	} else {
@@ -262,6 +264,7 @@ function getCurrentMonthString(){
 }
 
 /*
+hiya- when you have a sec, can you hop on my dev discord https://discord.gg/ppDDpFvu and try to use !playlist add in the 'open' text channel there?  i'm not sure if i fixed the issue or not yet, but i added some logging so it should be clear what the problem is if it fails again
 
 sounds like we'd want a way to enter a joke + a name, tied to a month (probably default to current, option to override), then a command to pull back the winners for the current month (with option to pull a specific month).   could add some fun commands too, say to track a leaderboard, or to pull a random dad joke
 
