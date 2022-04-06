@@ -172,10 +172,18 @@ function getJokes(client, msg){
 			//console.log("Query succeeded.");
 			
 			if (data.Items.length > 0){
-			let retString = "Jokes for " + dateParm + ":\n";			
+			let retString = "Jokes for " + dateParm + ":\n\n";			
+			
+			//temporary fix, eventually change this to direct channel messages to avoid the reply interuption
 			data.Items.forEach(function(item) {
-				retString += item.Dad + ": \"" + item.Joke + "\"\nWOTD: " + item.Word + "\n\n";
-			});
+				newPart = item.Dad + ": \"" + item.Joke + "\"\nWOTD: " + item.Word + "\n\n";
+				if (retString.length + newPart.length >= 2000){
+					msg.reply(retString);
+					retString = "\n" + newPart;
+				} else {
+					retString += newPart;
+				}
+			});	
 			msg.reply(retString);
 			} else {
 				msg.reply("No dad jokes found for " + dateParm + ". Perhaps the archives are incomplete.");
@@ -209,7 +217,7 @@ function randomJoke(client, msg){
 			let retString = "\n";
 			retString += "\"" + item.Joke + "\"";
 			//retString += "\nDad: " + item.Dad + "\tWOTD: " + item.Word + "\tDate: " + item.MMYYYY + "\n\n";
-			msg.reply(retString);
+			longReply(msg, retString);
 		}
 	});
 }
@@ -264,50 +272,4 @@ function getCurrentMonthString(){
 	console.log("returning date string: " + retStr);
 	return retStr;
 }
-
-/*
-hiya- when you have a sec, can you hop on my dev discord https://discord.gg/ppDDpFvu and try to use !playlist add in the 'open' text channel there?  i'm not sure if i fixed the issue or not yet, but i added some logging so it should be clear what the problem is if it fails again
-
-sounds like we'd want a way to enter a joke + a name, tied to a month (probably default to current, option to override), then a command to pull back the winners for the current month (with option to pull a specific month).   could add some fun commands too, say to track a leaderboard, or to pull a random dad joke
-
-
-MMYYYY > Partition Key
-Joke > Sort Key
-Word 
-Dad
-
-
-Query: all jokes from MMYYYY
-Random joke (provide random partition
-
-
-primary key = UUID?
-sort key = 
-
-
-search:
-random
-all from MMYY
-
-
-local secondary index = word
-
-
-
-Id
-Word
-Joke
-Date > Default to today
-Dad
-Reactions
-PumperFave
-
-
-https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GettingStarted.NodeJs.html
-https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-envvars.html
-
-*/
-
-
-
 
