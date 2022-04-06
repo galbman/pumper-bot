@@ -217,7 +217,7 @@ function randomJoke(client, msg){
 			let retString = "\n";
 			retString += "\"" + item.Joke + "\"";
 			//retString += "\nDad: " + item.Dad + "\tWOTD: " + item.Word + "\tDate: " + item.MMYYYY + "\n\n";
-			longReply(msg, retString);
+			msg.reply(retString);
 		}
 	});
 }
